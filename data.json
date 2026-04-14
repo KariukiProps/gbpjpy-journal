@@ -1,0 +1,42 @@
+{
+  "trades": [
+    {
+      "ref": "GJ-001",
+      "date": "2026-04-14",
+      "firm": "Sure Leverage Funding",
+      "direction": "Buy",
+      "setup": "Trend Continuation (1:1.4)",
+      "entry": 192.450,
+      "sl": 192.200,
+      "tp": 192.800,
+      "exit": 192.800,
+      "lots": 0.15,
+      "pnl": 52.50,
+      "rr": 1.4,
+      "result": "Win",
+      "compliance": "Valid"
+    }
+  ],
+  "accounts": [
+    {
+      "firm": "Sure Leverage Funding",
+      "starting_balance": 10000,
+      "current_balance": 10052.50,
+      "max_dd_pct": 10,
+      "daily_dd_limit_pct": 5,
+      "profit_target": 1000,
+      "account_type": "Phase 1",
+      "status": "Active"
+    },
+    {
+      "firm": "Rev One Trading",
+      "starting_balance": 10000,
+      "current_balance": 10000,
+      "max_dd_pct": 10,
+      "daily_dd_limit_pct": 5,
+      "profit_target": 1000,
+      "account_type": "Phase 1",
+      "status": "Active"
+    }
+  ]
+}
