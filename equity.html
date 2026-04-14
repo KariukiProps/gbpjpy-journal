@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Equity Curve — GBPJPY Journal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111318;
+    --surface2: #181c23;
+    --border: rgba(255,255,255,0.07);
+    --accent: #00e5a0;
+    --accent2: #ff6b6b;
+    --accent3: #ffd166;
+    --text: #f0f2f5;
+    --muted: #6b7280;
+    --muted2: #9ca3af;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 2rem 1.5rem;
+  }
+
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .header-left {}
+
+  .label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    letter-spacing: 0.05em;
+  }
+
+  .firm-toggle {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .toggle-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted2);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.05em;
+  }
+
+  .toggle-btn.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 500;
+  }
+
+  .toggle-btn:hover:not(.active) {
+    border-color: rgba(255,255,255,0.2);
+    color: var(--text);
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    margin-bottom: 1.75rem;
+  }
+
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .stat-value.pos { color: var(--accent); }
+  .stat-value.neg { color: var(--accent2); }
+
+  .stat-sub {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  .chart-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    position: relative;
+  }
+
+  .chart-label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  canvas { width: 100% !important; }
+
+  .trades-table {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 1.25rem;
+  }
+
+  .table-header {
+    display: grid;
+    grid-template-columns: 80px 1fr 90px 70px 70px 80px 90px;
+    gap: 0;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .trade-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 90px 70px 70px 80px 90px;
+    gap: 0;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted2);
+    transition: background 0.1s;
+  }
+
+  .trade-row:last-child { border-bottom: none; }
+  .trade-row:hover { background: var(--surface2); }
+
+  .trade-row .ref { color: var(--text); font-weight: 500; }
+  .win { color: var(--accent); }
+  .loss { color: var(--accent2); }
+  .be { color: var(--accent3); }
+
+  .badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+  }
+
+  .badge-buy { background: rgba(0,229,160,0.1); color: var(--accent); }
+  .badge-sell { background: rgba(255,107,107,0.1); color: var(--accent2); }
+
+  .footer {
+    margin-top: 2rem;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-align: center;
+  }
+
+  .no-trades {
+    padding: 3rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="label">GBP/JPY · Quarter Point Strategy</div>
+    <h1>Equity <span>Curve</span></h1>
+    <div class="subtitle" id="last-updated">Loading...</div>
+  </div>
+  <div class="firm-toggle">
+    <button class="toggle-btn active" onclick="setFirm('all')">All firms</button>
+    <button class="toggle-btn" onclick="setFirm('Sure Leverage Funding')">SLF</button>
+    <button class="toggle-btn" onclick="setFirm('Rev One Trading')">Rev One</button>
+  </div>
+</div>
+
+<div class="stats-row" id="stats-row"></div>
+
+<div class="chart-wrap">
+  <div class="chart-label">Cumulative P&L over time</div>
+  <canvas id="equityChart" height="280"></canvas>
+</div>
+
+<div class="chart-wrap">
+  <div class="chart-label">P&L per trade</div>
+  <canvas id="barChart" height="180"></canvas>
+</div>
+
+<div class="trades-table">
+  <div class="table-header">
+    <span>Ref</span>
+    <span>Firm</span>
+    <span>Date</span>
+    <span>Dir</span>
+    <span>R:R</span>
+    <span>P&L</span>
+    <span>Result</span>
+  </div>
+  <div id="trades-body"></div>
+</div>
+
+<div class="footer" id="footer"></div>
+
+<script>
+let allTrades = [];
+let activeFirm = 'all';
+
+async function loadData() {
+  try {
+    const res = await fetch('data.json');
+    const data = await res.json();
+    allTrades = data.trades || [];
+    render();
+  } catch(e) {
+    document.getElementById('trades-body').innerHTML = '<div class="no-trades">Could not load data.json — make sure it is in the same folder as this file.</div>';
+  }
+}
+
+function setFirm(firm) {
+  activeFirm = firm;
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  render();
+}
+
+function filtered() {
+  if (activeFirm === 'all') return allTrades;
+  return allTrades.filter(t => t.firm === activeFirm);
+}
+
+function render() {
+  const trades = filtered().slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+  renderStats(trades);
+  renderEquity(trades);
+  renderBar(trades);
+  renderTable(trades);
+  document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+  document.getElementById('footer').textContent = 'GBPJPY · Quarter Point Strategy · ' + trades.length + ' trades logged';
+}
+
+function renderStats(trades) {
+  const closed = trades.filter(t => t.result !== undefined && t.result !== '');
+  const totalPnl = closed.reduce((s,t) => s + (t.pnl || 0), 0);
+  const wins = closed.filter(t => t.result === 'Win').length;
+  const winRate = closed.length ? Math.round(wins / closed.length * 100) : 0;
+  const avgRR = closed.length ? (closed.reduce((s,t) => s + (t.rr || 0), 0) / closed.length).toFixed(2) : '0.00';
+  const best = closed.length ? Math.max(...closed.map(t => t.pnl || 0)) : 0;
+
+  const el = document.getElementById('stats-row');
+  el.innerHTML = `
+    <div class="stat">
+      <div class="stat-label">Total P&L</div>
+      <div class="stat-value ${totalPnl >= 0 ? 'pos' : 'neg'}">$${totalPnl.toFixed(2)}</div>
+      <div class="stat-sub">${closed.length} closed trades</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Win rate</div>
+      <div class="stat-value ${winRate >= 50 ? 'pos' : 'neg'}">${winRate}%</div>
+      <div class="stat-sub">${wins} wins / ${closed.length - wins} losses</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Avg R:R</div>
+      <div class="stat-value">${avgRR}</div>
+      <div class="stat-sub">target ≥ 1.0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Best trade</div>
+      <div class="stat-value pos">$${best.toFixed(2)}</div>
+      <div class="stat-sub">single trade</div>
+    </div>
+  `;
+}
+
+function renderEquity(trades) {
+  const ctx = document.getElementById('equityChart').getContext('2d');
+  if (window._eqChart) window._eqChart.destroy();
+
+  if (!trades.length) return;
+
+  let cum = 0;
+  const labels = [];
+  const values = [];
+  trades.forEach((t, i) => {
+    cum += (t.pnl || 0);
+    labels.push(t.ref || `T${i+1}`);
+    values.push(parseFloat(cum.toFixed(2)));
+  });
+
+  const color = values[values.length-1] >= 0 ? '#00e5a0' : '#ff6b6b';
+
+  window._eqChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        borderColor: color,
+        borderWidth: 2,
+        pointBackgroundColor: color,
+        pointRadius: trades.length <= 20 ? 4 : 2,
+        pointHoverRadius: 6,
+        fill: true,
+        backgroundColor: (ctx) => {
+          const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
+          g.addColorStop(0, color + '33');
+          g.addColorStop(1, color + '00');
+          return g;
+        },
+        tension: 0.35
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#181c23',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#9ca3af',
+          bodyColor: '#f0f2f5',
+          titleFont: { family: 'DM Mono', size: 10 },
+          bodyFont: { family: 'DM Mono', size: 12 },
+          callbacks: {
+            label: ctx => ' $' + ctx.parsed.y.toFixed(2)
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#6b7280', font: { family: 'DM Mono', size: 10 }, maxTicksLimit: 10 }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#6b7280', font: { family: 'DM Mono', size: 10 }, callback: v => '$' + v }
+        }
+      }
+    }
+  });
+}
+
+function renderBar(trades) {
+  const ctx = document.getElementById('barChart').getContext('2d');
+  if (window._barChart) window._barChart.destroy();
+  if (!trades.length) return;
+
+  const labels = trades.map((t,i) => t.ref || `T${i+1}`);
+  const values = trades.map(t => parseFloat((t.pnl || 0).toFixed(2)));
+  const colors = values.map(v => v >= 0 ? '#00e5a0' : '#ff6b6b');
+
+  window._barChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data: values, backgroundColor: colors, borderRadius: 3 }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#181c23',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#9ca3af',
+          bodyColor: '#f0f2f5',
+          titleFont: { family: 'DM Mono', size: 10 },
+          bodyFont: { family: 'DM Mono', size: 12 },
+          callbacks: { label: ctx => ' $' + ctx.parsed.y.toFixed(2) }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#6b7280', font: { family: 'DM Mono', size: 10 }, maxTicksLimit: 12 } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b7280', font: { family: 'DM Mono', size: 10 }, callback: v => '$' + v } }
+      }
+    }
+  });
+}
+
+function renderTable(trades) {
+  const el = document.getElementById('trades-body');
+  if (!trades.length) {
+    el.innerHTML = '<div class="no-trades">No trades logged yet. Add entries to data.json to see them here.</div>';
+    return;
+  }
+  const sorted = trades.slice().sort((a,b) => new Date(b.date) - new Date(a.date));
+  el.innerHTML = sorted.map(t => {
+    const rc = t.result === 'Win' ? 'win' : t.result === 'Loss' ? 'loss' : 'be';
+    const dc = t.direction === 'Buy' ? 'badge-buy' : 'badge-sell';
+    const pnlClass = (t.pnl || 0) >= 0 ? 'win' : 'loss';
+    const pnlStr = (t.pnl >= 0 ? '+' : '') + '$' + (t.pnl || 0).toFixed(2);
+    const date = new Date(t.date).toLocaleDateString('en-GB', {day:'2-digit',month:'short'});
+    return `<div class="trade-row">
+      <span class="ref">${t.ref || '—'}</span>
+      <span>${t.firm || '—'}</span>
+      <span>${date}</span>
+      <span><span class="badge ${dc}">${t.direction || '—'}</span></span>
+      <span>${(t.rr || 0).toFixed(2)}</span>
+      <span class="${pnlClass}">${pnlStr}</span>
+      <span class="${rc}">${t.result || '—'}</span>
+    </div>`;
+  }).join('');
+}
+
+loadData();
+</script>
+</body>
+</html>
