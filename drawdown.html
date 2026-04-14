@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drawdown — GBPJPY Journal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111318;
+    --surface2: #181c23;
+    --border: rgba(255,255,255,0.07);
+    --accent: #00e5a0;
+    --accent2: #ff6b6b;
+    --accent3: #ffd166;
+    --text: #f0f2f5;
+    --muted: #6b7280;
+    --muted2: #9ca3af;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 2rem 1.5rem;
+  }
+
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--accent2);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  h1 span { color: var(--accent2); }
+
+  .subtitle {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    letter-spacing: 0.05em;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 1.75rem;
+  }
+
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .stat-value.safe { color: var(--accent); }
+  .stat-value.warn { color: var(--accent3); }
+  .stat-value.danger { color: var(--accent2); }
+
+  .stat-sub {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  .firms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+    margin-bottom: 1.75rem;
+  }
+
+  .firm-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+  }
+
+  .firm-card.breached { border-color: rgba(255,107,107,0.35); }
+  .firm-card.warning { border-color: rgba(255,209,102,0.35); }
+  .firm-card.safe { border-color: rgba(0,229,160,0.2); }
+
+  .firm-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .firm-type {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  .firm-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+
+  .firm-row-label { color: var(--muted); }
+  .firm-row-val { color: var(--text); font-weight: 500; }
+  .firm-row-val.safe { color: var(--accent); }
+  .firm-row-val.warn { color: var(--accent3); }
+  .firm-row-val.danger { color: var(--accent2); }
+
+  .progress-wrap {
+    margin-top: 12px;
+  }
+
+  .progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: var(--muted);
+    margin-bottom: 5px;
+    letter-spacing: 0.08em;
+  }
+
+  .progress-bg {
+    background: var(--surface2);
+    border-radius: 3px;
+    height: 6px;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+
+  .progress-fill {
+    height: 6px;
+    border-radius: 3px;
+    transition: width 0.6s ease;
+  }
+
+  .progress-warning-line {
+    position: relative;
+    height: 0;
+  }
+
+  .status-badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+    margin-top: 10px;
+  }
+
+  .status-safe { background: rgba(0,229,160,0.1); color: var(--accent); }
+  .status-warn { background: rgba(255,209,102,0.1); color: var(--accent3); }
+  .status-danger { background: rgba(255,107,107,0.1); color: var(--accent2); }
+
+  .chart-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .chart-label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .daily-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .daily-title {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .daily-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+
+  .daily-card {
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 12px;
+  }
+
+  .daily-firm { font-size: 11px; font-weight: 500; color: var(--text); margin-bottom: 8px; }
+
+  .daily-bar-bg {
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    height: 5px;
+    overflow: hidden;
+    margin-bottom: 5px;
+  }
+
+  .daily-bar-fill {
+    height: 5px;
+    border-radius: 3px;
+  }
+
+  .daily-nums {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .footer {
+    margin-top: 2rem;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="label">GBP/JPY · Risk Monitor</div>
+    <h1>Drawdown <span>Tracker</span></h1>
+    <div class="subtitle" id="last-updated">Loading...</div>
+  </div>
+</div>
+
+<div class="stats-row" id="stats-row"></div>
+
+<div class="firms-grid" id="firms-grid"></div>
+
+<div class="chart-wrap">
+  <div class="chart-label">Drawdown % per account vs limit</div>
+  <canvas id="ddChart" height="200"></canvas>
+</div>
+
+<div class="daily-section">
+  <div class="daily-title">Daily drawdown status</div>
+  <div class="daily-grid" id="daily-grid"></div>
+</div>
+
+<div class="chart-wrap">
+  <div class="chart-label">Account balance comparison</div>
+  <canvas id="balChart" height="180"></canvas>
+</div>
+
+<div class="footer" id="footer"></div>
+
+<script>
+async function loadData() {
+  try {
+    const res = await fetch('data.json');
+    const data = await res.json();
+    render(data.accounts || [], data.trades || []);
+  } catch(e) {
+    document.getElementById('firms-grid').innerHTML = '<p style="color:var(--muted);font-size:13px">Could not load data.json</p>';
+  }
+}
+
+function getStatus(dd, max) {
+  if (dd >= max) return 'danger';
+  if (dd >= max * 0.8) return 'warn';
+  return 'safe';
+}
+
+function render(accounts, trades) {
+  document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+
+  const totalStart = accounts.reduce((s,a) => s + (a.starting_balance||0), 0);
+  const totalCurrent = accounts.reduce((s,a) => s + (a.current_balance||0), 0);
+  const totalPnl = totalCurrent - totalStart;
+  const safeCount = accounts.filter(a => getStatus(
+    ((a.starting_balance - a.current_balance) / a.starting_balance * 100),
+    a.max_dd_pct
+  ) === 'safe').length;
+
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat">
+      <div class="stat-label">Total capital</div>
+      <div class="stat-value">$${totalCurrent.toLocaleString()}</div>
+      <div class="stat-sub">across ${accounts.length} accounts</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Net P&L</div>
+      <div class="stat-value ${totalPnl >= 0 ? 'safe' : 'danger'}">${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}</div>
+      <div class="stat-sub">all firms combined</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Accounts safe</div>
+      <div class="stat-value safe">${safeCount} / ${accounts.length}</div>
+      <div class="stat-sub">within DD limits</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Accounts monitored</div>
+      <div class="stat-value">${accounts.length}</div>
+      <div class="stat-sub">SLF + Rev One</div>
+    </div>
+  `;
+
+  const firmsGrid = document.getElementById('firms-grid');
+  firmsGrid.innerHTML = accounts.map(a => {
+    const dd = a.starting_balance > 0
+      ? parseFloat(((a.starting_balance - a.current_balance) / a.starting_balance * 100).toFixed(2))
+      : 0;
+    const status = getStatus(dd, a.max_dd_pct);
+    const pct = Math.min((dd / a.max_dd_pct) * 100, 100);
+    const fillColor = status === 'safe' ? '#00e5a0' : status === 'warn' ? '#ffd166' : '#ff6b6b';
+    const ptProgress = a.profit_target > 0
+      ? Math.min(((a.current_balance - a.starting_balance) / a.profit_target * 100), 100).toFixed(1)
+      : 0;
+    const pnl = (a.current_balance - a.starting_balance).toFixed(2);
+    const pnlClass = pnl >= 0 ? 'safe' : 'danger';
+
+    return `<div class="firm-card ${status}">
+      <div class="firm-name">${a.firm}</div>
+      <div class="firm-type">${a.account_type || 'Active'} · ${a.status || 'Active'}</div>
+      <div class="firm-row"><span class="firm-row-label">Starting balance</span><span class="firm-row-val">$${a.starting_balance.toLocaleString()}</span></div>
+      <div class="firm-row"><span class="firm-row-label">Current balance</span><span class="firm-row-val">$${a.current_balance.toLocaleString()}</span></div>
+      <div class="firm-row"><span class="firm-row-label">Net P&L</span><span class="firm-row-val ${pnlClass}">${pnl >= 0 ? '+' : ''}$${pnl}</span></div>
+      <div class="firm-row"><span class="firm-row-label">Drawdown</span><span class="firm-row-val ${status}">${dd}% / ${a.max_dd_pct}%</span></div>
+      <div class="firm-row"><span class="firm-row-label">Profit target</span><span class="firm-row-val">$${(a.profit_target||0).toLocaleString()}</span></div>
+      <div class="firm-row"><span class="firm-row-label">Target progress</span><span class="firm-row-val safe">${ptProgress}%</span></div>
+      <div class="progress-wrap">
+        <div class="progress-labels"><span>Drawdown used</span><span>${dd}% of ${a.max_dd_pct}% max</span></div>
+        <div class="progress-bg"><div class="progress-fill" style="width:${pct}%;background:${fillColor}"></div></div>
+      </div>
+      <span class="status-badge status-${status}">${status === 'safe' ? '✅ SAFE' : status === 'warn' ? '⚠️ WARNING' : '❌ BREACHED'}</span>
+    </div>`;
+  }).join('');
+
+  const dailyGrid = document.getElementById('daily-grid');
+  dailyGrid.innerHTML = accounts.map(a => {
+    const ddUsed = a.daily_dd_used_pct || 0;
+    const ddLimit = a.daily_dd_limit_pct || 5;
+    const dailyPct = Math.min((ddUsed / ddLimit) * 100, 100);
+    const dStatus = getStatus(ddUsed, ddLimit);
+    const dColor = dStatus === 'safe' ? '#00e5a0' : dStatus === 'warn' ? '#ffd166' : '#ff6b6b';
+    return `<div class="daily-card">
+      <div class="daily-firm">${a.firm}</div>
+      <div class="daily-bar-bg"><div class="daily-bar-fill" style="width:${dailyPct}%;background:${dColor}"></div></div>
+      <div class="daily-nums"><span>${ddUsed}% used</span><span>${ddLimit}% limit</span></div>
+    </div>`;
+  }).join('');
+
+  renderDDChart(accounts);
+  renderBalChart(accounts);
+  document.getElementById('footer').textContent = 'GBPJPY · Quarter Point Strategy · ' + accounts.length + ' accounts tracked';
+}
+
+function renderDDChart(accounts) {
+  const ctx = document.getElementById('ddChart').getContext('2d');
+  if (window._ddChart) window._ddChart.destroy();
+
+  const labels = accounts.map(a => a.firm.replace(' Trading','').replace(' Funding',''));
+  const ddVals = accounts.map(a => parseFloat(((a.starting_balance - a.current_balance) / a.starting_balance * 100).toFixed(2)));
+  const maxVals = accounts.map(a => a.max_dd_pct);
+  const warnVals = accounts.map(a => parseFloat((a.max_dd_pct * 0.8).toFixed(2)));
+
+  window._ddChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Drawdown used %',
+          data: ddVals,
+          backgroundColor: ddVals.map((v,i) => {
+            const s = getStatus(v, maxVals[i]);
+            return s === 'safe' ? 'rgba(0,229,160,0.7)' : s === 'warn' ? 'rgba(255,209,102,0.7)' : 'rgba(255,107,107,0.7)';
+          }),
+          borderRadius: 4
+        },
+        {
+          label: 'Warning threshold (80%)',
+          data: warnVals,
+          type: 'line',
+          borderColor: 'rgba(255,209,102,0.6)',
+          borderWidth: 1.5,
+          borderDash: [4,4],
+          pointRadius: 0,
+          fill: false
+        },
+        {
+          label: 'Max drawdown limit',
+          data: maxVals,
+          type: 'line',
+          borderColor: 'rgba(255,107,107,0.6)',
+          borderWidth: 1.5,
+          borderDash: [4,4],
+          pointRadius: 0,
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          labels: { color: '#6b7280', font: { family: 'DM Mono', size: 10 }, boxWidth: 12 }
+        },
+        tooltip: {
+          backgroundColor: '#181c23',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#9ca3af',
+          bodyColor: '#f0f2f5',
+          titleFont: { family: 'DM Mono', size: 10 },
+          bodyFont: { family: 'DM Mono', size: 11 },
+          callbacks: { label: ctx => ' ' + ctx.parsed.y.toFixed(2) + '%' }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#6b7280', font: { family: 'DM Mono', size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b7280', font: { family: 'DM Mono', size: 10 }, callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+function renderBalChart(accounts) {
+  const ctx = document.getElementById('balChart').getContext('2d');
+  if (window._balChart) window._balChart.destroy();
+
+  const labels = accounts.map(a => a.firm.replace(' Trading','').replace(' Funding',''));
+
+  window._balChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Starting balance',
+          data: accounts.map(a => a.starting_balance),
+          backgroundColor: 'rgba(255,255,255,0.08)',
+          borderRadius: 4
+        },
+        {
+          label: 'Current balance',
+          data: accounts.map(a => a.current_balance),
+          backgroundColor: accounts.map(a => a.current_balance >= a.starting_balance ? 'rgba(0,229,160,0.7)' : 'rgba(255,107,107,0.7)'),
+          borderRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          labels: { color: '#6b7280', font: { family: 'DM Mono', size: 10 }, boxWidth: 12 }
+        },
+        tooltip: {
+          backgroundColor: '#181c23',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#9ca3af',
+          bodyColor: '#f0f2f5',
+          titleFont: { family: 'DM Mono', size: 10 },
+          bodyFont: { family: 'DM Mono', size: 11 },
+          callbacks: { label: ctx => ' $' + ctx.parsed.y.toLocaleString() }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#6b7280', font: { family: 'DM Mono', size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b7280', font: { family: 'DM Mono', size: 10 }, callback: v => '$' + v.toLocaleString() } }
+      }
+    }
+  });
+}
+
+loadData();
+</script>
+</body>
+</html>
